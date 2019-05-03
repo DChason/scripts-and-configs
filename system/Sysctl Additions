@@ -1,0 +1,18 @@
+###################################################################
+# AS/IDEA uses inotify to monitor directories for changes.
+# Setting to the following value should have a neglible memory
+# footprint but comes from non-swappable kernel memory. 
+#
+# 256MB/512MB on 32-bit/64-bit
+#
+fs.inotify.max_user_watches = 524288
+
+###################################################################
+# Parameter that defines how much and how often the kernel
+# will copy RAM contents to swap file. The higher this is set
+# the more aggressive the kernel will utilize swap. Value range
+# is anything from 0 - 100 and corresponds to the percentage
+# of RAM capacity that is free. A value of 10 will not use swap file
+# until your machine is at 90 percent of RAM capacity.
+#
+vm.swappiness = 10
