@@ -1,0 +1,43 @@
+#! /usr/bin/python3
+
+import argparse
+import os
+import subprocess
+import sys
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(
+        description="Simple tool to find and delete hidden OS files like thumbs.db or ds_store.")
+    parser.add_argument("--d", dest="directory", default=os.getcwd(), type=str,
+                        help="The directory to run hdelete if you do not want to run in the current directory.")
+    return parser
+
+
+def main(args):
+    # initial command to find any instances of the hidden files in the desired directory:
+    cmd = ["find", f"{args.directory}", "(", "-iname", ".DS_Store", "-o", "-iname", "Thumbs.db", "-o", "-iname", "._*", ")"]
+
+    tmp = subprocess.run(cmd, shell=False, capture_output=True)
+    result = tmp.stdout.decode()
+
+    if not result:
+        sys.exit(f"\nThere are no matching files in '{args.directory}'.")
+
+    print(f"\n{result}")
+    delete_files = str(input("Do you want to delete these files? [Y/n]: "))
+
+    if delete_files not in ["Y", "Yes", "y", "yes"]:
+        sys.exit("\nAction cancelled.")
+
+    # adding "-delete" flag to the command
+    cmd.insert(len(cmd), "-delete")
+    subprocess.run(cmd, shell=False)
+    print("\nFiles deleted.")
+
+
+if __name__ == "__main__":
+    main_parser = create_parser()
+    args = main_parser.parse_args()
+
+    main(args)
