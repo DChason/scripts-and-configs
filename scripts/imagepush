@@ -1,0 +1,96 @@
+#! /usr/bin/python3
+
+import base64
+import boto3
+import docker
+import sys
+
+# TODO: clean everything up. can do better value handling and need error checking/handling on calls.
+
+
+def value_manipulation(value_data):
+    """
+    fun with value manipulations
+    """
+
+    # attempt to decode auth_token to a password value docker login will accept:
+    try:
+        password = base64.b64decode(value_data.get("auth_token")).decode().split(":")[1]
+    except KeyError:
+        print("the auth_token key is not present")
+
+    # remove the https:// in the registry so docker login doesn't complain about schemes:
+    try:
+        tmp = value_data.get("registry") + "/" + value_data.get("repository_name")
+        remote_repository = tmp[8:]
+    except KeyError:
+        print("the registry key is not present")
+
+    # auth_token is no longer needed after decoding:
+    del value_data["auth_token"]
+
+    # check to make sure there are no empty values:
+    local_repository = value_data.get("repository_name") + ":" + value_data.get("tag")
+    value_data.update(password=password, local_repository=local_repository, remote_repository=remote_repository)
+    for value in value_data.values():
+        if not value:
+            sys.exit("a token_value was not generated properly.")
+
+    return value_data
+
+
+def main(values):
+    """
+    the actual logic
+    """
+
+    # start docker and aws ecr clients:
+    docker_client = docker.from_env()
+    session = boto3.Session(profile_name="your-aws-profile-here")
+    infra_client = session.client("ecr")
+    token = infra_client.get_authorization_token(registryIds=[values.get("registry_id")])
+
+    # push returned data to value_manipulation() so we can create the values needed in the next calls:
+    seed_data = {
+        "repository_name": values.get("repository_name"),
+        "tag": values.get("tag"),
+        "registry": token["authorizationData"][0]["proxyEndpoint"],
+        "auth_token": token["authorizationData"][0]["authorizationToken"]
+    }
+    data = value_manipulation(seed_data)
+
+    # setting variables to prepare for calls. this route was chosen for readability:
+    username = "AWS"
+    password = data.get("password")
+    registry = data.get("registry")
+    local_repository = data.get("local_repository")
+    remote_repository = data.get("remote_repository")
+    tag = values.get("tag")
+
+    # attempt to log in to docker client with aws ecr registry:
+    docker_login = docker_client.login(username, password, registry=registry)
+    print(docker_login)
+
+    # attempt to tag image into a repository:
+    image_tag = docker_client.api.tag(local_repository, remote_repository, tag)
+    print(f"image_tag success: {image_tag}")
+
+    # attempt to push docker image to aws ecr registry:
+    image = docker_client.api.push(remote_repository, tag)
+    print(image)
+
+
+if __name__ == "__main__":
+
+    # get the basic data inputs required:
+    registry_id = input("\naccount number: ")
+    repository_name = input("\nimage name: ")
+    tag = input("\nimage tag: ")
+
+    # check to make sure there are no empty values:
+    values = {"registry_id": registry_id, "repository_name": repository_name, "tag": tag}
+    for value in values.values():
+        if not value:
+            sys.exit("all values are required. please hangup and try your call again.")
+
+    main(values)
