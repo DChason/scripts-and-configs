@@ -1,96 +1,117 @@
-#! /usr/bin/python3
+#!/usr/bin/env python3
 
 import base64
 import boto3
 import docker
-import sys
-
-# TODO: clean everything up. can do better value handling and need error checking/handling on calls.
 
 
-def value_manipulation(value_data):
-    """
-    fun with value manipulations
-    """
-
+def value_manipulation(values):
     # attempt to decode auth_token to a password value docker login will accept:
-    try:
-        password = base64.b64decode(value_data.get("auth_token")).decode().split(":")[1]
-    except KeyError:
-        print("the auth_token key is not present")
+    password = base64.b64decode(values.get("auth_token")).decode().split(":")[1]
 
     # remove the https:// in the registry so docker login doesn't complain about schemes:
-    try:
-        tmp = value_data.get("registry") + "/" + value_data.get("repository_name")
-        remote_repository = tmp[8:]
-    except KeyError:
-        print("the registry key is not present")
+    remote_repository = values.get("registry") + "/" + values.get("image_name")[8:]
 
-    # auth_token is no longer needed after decoding:
-    del value_data["auth_token"]
+    # add image_name and image_tag in an accepted format for docker:
+    local_image = values.get("image_name") + ":" + values.get("image_tag")
+
+    manipulated = {
+        "password": password,
+        "local_image": local_image,
+        "remote_repository": remote_repository
+    }
 
     # check to make sure there are no empty values:
-    local_repository = value_data.get("repository_name") + ":" + value_data.get("tag")
-    value_data.update(password=password, local_repository=local_repository, remote_repository=remote_repository)
-    for value in value_data.values():
+    for value in manipulated.values():
         if not value:
-            sys.exit("a token_value was not generated properly.")
+            raise ValueError("a value was not manipulated properly.")
 
-    return value_data
+    return manipulated
 
 
-def main(values):
-    """
-    the actual logic
-    """
+def main(input_values):
+
+    values = {
+        "profile": input_values.get("profile"),
+        "account_number": input_values.get("account_number"),
+        "image_name": input_values.get("image_name"),
+        "image_tag": input_values.get("image_tag")
+    }
 
     # start docker and aws ecr clients:
-    docker_client = docker.from_env()
-    session = boto3.Session(profile_name="your-aws-profile-here")
-    infra_client = session.client("ecr")
-    token = infra_client.get_authorization_token(registryIds=[values.get("registry_id")])
+    try:
+        docker_client = docker.from_env()
+        aws_session = boto3.Session(profile_name=values.get("profile")).client("ecr")
+        aws_client = aws_session.get_authorization_token(registryIds=[values.get("account_number")])
+    except Exception:
+        raise ValueError("could not start clients.")
 
-    # push returned data to value_manipulation() so we can create the values needed in the next calls:
-    seed_data = {
-        "repository_name": values.get("repository_name"),
-        "tag": values.get("tag"),
-        "registry": token["authorizationData"][0]["proxyEndpoint"],
-        "auth_token": token["authorizationData"][0]["authorizationToken"]
-    }
-    data = value_manipulation(seed_data)
+    values.update(
+        registry=aws_client["authorizationData"][0]["proxyEndpoint"],
+        auth_token=aws_client["authorizationData"][0]["authorizationToken"]
+    )
 
-    # setting variables to prepare for calls. this route was chosen for readability:
-    username = "AWS"
-    password = data.get("password")
-    registry = data.get("registry")
-    local_repository = data.get("local_repository")
-    remote_repository = data.get("remote_repository")
-    tag = values.get("tag")
+    manipulated_data = value_manipulation(values)
+
+    values.update(
+        password=manipulated_data.get("password"),
+        local_image=manipulated_data.get("local_image"),
+        remote_repository=manipulated_data.get("remote_repository"),
+        username="AWS"
+    )
 
     # attempt to log in to docker client with aws ecr registry:
-    docker_login = docker_client.login(username, password, registry=registry)
+    try:
+        docker_login = docker_client.login(
+            username=values.get("username"),
+            password=values.get("password"),
+            registry=values.get("registry")
+        )
+    except Exception:
+        raise ValueError("could not login to docker.")
     print(docker_login)
 
     # attempt to tag image into a repository:
-    image_tag = docker_client.api.tag(local_repository, remote_repository, tag)
-    print(f"image_tag success: {image_tag}")
+    try:
+        docker_tag = docker_client.api.tag(
+            image=values.get("local_image"),
+            repository=values.get("remote_repository"),
+            tag=values.get("image_tag")
+        )
+    except Exception:
+        raise ValueError("could not tag image repository.")
+    print(f"image_tag success: {docker_tag}")
 
+    # TODO: update this section - docker_push returns updating progress bars that i want to capture.
     # attempt to push docker image to aws ecr registry:
-    image = docker_client.api.push(remote_repository, tag)
-    print(image)
+    try:
+        docker_push = docker_client.api.push(
+            repository=values.get("remote_repository"),
+            tag=values.get("image_tag")
+        )
+    except Exception:
+        raise ValueError("could not push image to ecr.")
+    print(docker_push)
 
 
 if __name__ == "__main__":
 
     # get the basic data inputs required:
-    registry_id = input("\naccount number: ")
-    repository_name = input("\nimage name: ")
-    tag = input("\nimage tag: ")
+    profile = input("which aws profile? ")
+    account_number = input("which aws account number? ")
+    image_name = input("what is the image name? ")
+    image_tag = input("what is the image tag? ")
 
     # check to make sure there are no empty values:
-    values = {"registry_id": registry_id, "repository_name": repository_name, "tag": tag}
-    for value in values.values():
-        if not value:
-            sys.exit("all values are required. please hangup and try your call again.")
+    input_values = {
+        "profile": profile,
+        "account_number": account_number,
+        "image_name": image_name,
+        "image_tag": image_tag
+    }
 
-    main(values)
+    for value in input_values.values():
+        if not value:
+            raise ValueError("all values are required. please hang up and try your call again.")
+
+    main(input_values)
