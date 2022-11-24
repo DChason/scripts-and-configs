@@ -3,6 +3,7 @@
 import base64
 import boto3
 import docker
+import sys
 
 
 def value_manipulation(values):
@@ -43,8 +44,8 @@ def main(input_values):
         docker_client = docker.from_env()
         aws_session = boto3.Session(profile_name=values.get("profile")).client("ecr")
         aws_client = aws_session.get_authorization_token(registryIds=[values.get("account_number")])
-    except Exception:
-        raise ValueError("could not start clients.")
+    except Exception as error:
+        sys.exit(f"{error} \ncould not start clients.")
 
     values.update(
         registry=aws_client["authorizationData"][0]["proxyEndpoint"],
@@ -67,8 +68,8 @@ def main(input_values):
             password=values.get("password"),
             registry=values.get("registry")
         )
-    except Exception:
-        raise ValueError("could not login to docker.")
+    except Exception as error:
+        sys.exit(f"{error} \ncould not log in to docker.")
     print(docker_login)
 
     # attempt to tag image into a repository:
@@ -78,8 +79,8 @@ def main(input_values):
             repository=values.get("remote_repository"),
             tag=values.get("image_tag")
         )
-    except Exception:
-        raise ValueError("could not tag image repository.")
+    except Exception as error:
+        sys.exit(f"{error} \ncould not tag image repository.")
     print(f"image_tag success: {docker_tag}")
 
     # TODO: update this section - docker_push returns updating progress bars that i want to capture.
@@ -89,8 +90,8 @@ def main(input_values):
             repository=values.get("remote_repository"),
             tag=values.get("image_tag")
         )
-    except Exception:
-        raise ValueError("could not push image to ecr.")
+    except Exception as error:
+        sys.exit(f"{error} \ncould not push to ecr.")
     print(docker_push)
 
 
