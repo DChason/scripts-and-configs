@@ -1,0 +1,70 @@
+#! /usr/bin/python3
+
+import os
+import argparse
+from yt_dlp import YoutubeDL
+
+def get_downloads_directory():
+    return os.path.expanduser(os.path.join(os.environ.get("HOME", "~"), "Downloads"))
+
+def get_full_youtube_url(video_id_or_url):
+    if not (video_id_or_url.startswith("http://") or video_id_or_url.startswith("https://")):
+        return f"https://www.youtube.com/watch?v={video_id_or_url}"
+    return video_id_or_url
+
+def build_downloader_options(audio_only, output_name, downloads_directory):
+    if output_name is not None:
+        output_template = os.path.join(downloads_directory, output_name + ".%(ext)s")
+    else:
+        output_template = os.path.join(downloads_directory, '%(title)s.%(ext)s')
+    if audio_only:
+        return {
+            'outtmpl': output_template,
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'quiet': False,
+            'noplaylist': True,
+        }
+    else:
+        return {
+            'outtmpl': output_template,
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+            'quiet': False,
+            'noplaylist': True,
+        }
+
+def download_youtube_content(youtube_url, downloader_options, downloads_directory):
+    try:
+        with YoutubeDL(downloader_options) as youtube_downloader:
+            video_information = youtube_downloader.extract_info(youtube_url, download=True)
+            print(f"Download complete! Saved to {downloads_directory}")
+            print(f"Title: {video_information.get('title')}")
+    except Exception as error:
+        print(f"yt-dlp error: {error}")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Download YouTube videos or audio using yt-dlp.",
+        usage="python3 youtube-downloader [--audio] [--output NAME] <video_id_or_url>"
+    )
+    parser.add_argument('video_id_or_url', metavar='video_id_or_url', type=str, help='YouTube video ID or URL')
+    parser.add_argument('--audio', action='store_true', help='Download audio only (mp3)')
+    parser.add_argument('--output', metavar='NAME', type=str, help='Save file as NAME (without extension)')
+    args = parser.parse_args()
+
+    audio_only = args.audio
+    output_name = args.output
+    video_id_or_url = args.video_id_or_url
+
+    downloads_directory = get_downloads_directory()
+    youtube_url = get_full_youtube_url(video_id_or_url)
+    downloader_options = build_downloader_options(audio_only, output_name, downloads_directory)
+    download_youtube_content(youtube_url, downloader_options, downloads_directory)
+
+if __name__ == "__main__":
+    main()
