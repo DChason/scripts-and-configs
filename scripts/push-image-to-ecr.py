@@ -11,7 +11,7 @@ def value_manipulation(values):
     password = base64.b64decode(values.get("auth_token")).decode().split(":")[1]
 
     # remove the https:// in the registry so docker login doesn't complain about schemes:
-    remote_repository = values.get("registry") + "/" + values.get("image_name")[8:]
+    remote_repository = values.get("registry").replace("https://", "") + "/" + values.get("image_name")
 
     # add image_name and image_tag in an accepted format for docker:
     local_image = values.get("image_name") + ":" + values.get("image_tag")
