@@ -8,15 +8,15 @@ import sys
 DEFAULT_PATTERNS = [".DS_Store", "Thumbs.db", "._*"]
 DESCRIPTION = "A simple tool to find and delete hidden OS files like thumbs.db, ds_store, and ._*."
 HELP_DIRECTORY = "The directory to run hdelete if you do not want to run in the current directory."
-PROMPT_CONFIRM_DELETE = "Do you want to delete these files? [Y/n]: "
-MSG_NO_MATCHING_FILES = "There are no files matching defined patterns in"
 MSG_ACTION_CANCELLED = "Action cancelled by user."
 MSG_DANGEROUS_DIRECTORY = "Refusing to run in the root directory. Please specify a safer directory."
 MSG_DELETED = "Deleted:"
-MSG_WARNING_THRESHOLD = "Are you sure you want to delete this many files? Please double-check to ensure that no important files are included."
 MSG_ERROR_DELETING = "Error deleting"
 MSG_FILES_DELETED = "Files deleted."
 MSG_FOUND_FILES = "Found files:"
+MSG_NO_MATCHING_FILES = "There are no files matching defined patterns in"
+MSG_WARNING_THRESHOLD = "Are you sure you want to delete this many files? Please double-check to ensure that no important files are included."
+PROMPT_CONFIRM_DELETE = "Do you want to delete these files? [Y/n]: "
 WARNING_THRESHOLD = 25
 
 
