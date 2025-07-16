@@ -7,6 +7,8 @@ import sys
 
 DEFAULT_PATTERNS = [".DS_Store", "Thumbs.db", "._*"]
 DESCRIPTION = "A simple tool to find and delete hidden OS files like thumbs.db, ds_store, and ._*."
+HELP_ALTERNATIVE = "Use only these patterns, replacing the default list (space-separated, e.g. -A '*.bak' '*~')."
+HELP_APPEND = "Append patterns to the default list (space-separated, e.g. -a '*.log' '*.tmp')."
 HELP_DIRECTORY = "The directory to run hdelete if you do not want to run in the current directory."
 MSG_ACTION_CANCELLED = "Action cancelled by user."
 MSG_DANGEROUS_DIRECTORY = "Refusing to run in the root directory. Please specify a safer directory."
@@ -22,8 +24,28 @@ WARNING_THRESHOLD = 25
 
 def parse_args() -> argparse.Namespace:
     """Parses arguments from the command line."""
-    parser = argparse.ArgumentParser(description=DESCRIPTION)
+    parser = argparse.ArgumentParser(
+        description=DESCRIPTION,
+        epilog=f"""
+            Examples:
+              hdelete
+                Run with default patterns ({', '.join(DEFAULT_PATTERNS)}) in the current directory.
+            
+              hdelete -d /tmp
+                Run with default patterns ({', '.join(DEFAULT_PATTERNS)}) in /tmp.
+            
+              hdelete -a '*.log' '*.tmp'
+                Append '*.log' and '*.tmp' patterns to the default list.
+            
+              hdelete -A '*.bak' '*~'
+                Use only '*.bak' and '*~' as patterns (replacing the defaults).
+            """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument('-d', '--directory', default=os.getcwd(), type=str, help=HELP_DIRECTORY)
+    pattern_mode = parser.add_mutually_exclusive_group()
+    pattern_mode.add_argument('-a', '--append', nargs='+', metavar='PATTERN', help=HELP_APPEND)
+    pattern_mode.add_argument('-A', '--alternative', nargs='+', metavar='PATTERN', help=HELP_ALTERNATIVE)
     return parser.parse_args()
 
 
@@ -37,16 +59,27 @@ def is_root_directory(path: str) -> bool:
         return absolute_path == "/"
 
 
-def find_files(directory: str) -> list:
+def select_patterns(args) -> list:
+    """Selects the patterns to use based on the command line arguments."""
+    if args.alternative:
+        return args.alternative
+    elif args.append:
+        return DEFAULT_PATTERNS + args.append
+    return DEFAULT_PATTERNS
+
+
+def find_files(directory: str, patterns=None) -> list:
     """Finds files in the specified directory that match the defined patterns."""
+    if patterns is None:
+        patterns = DEFAULT_PATTERNS
     matching_files = []
     for root, _, files in os.walk(directory):
         for filename in files:
-            if any(fnmatch.fnmatch(filename, pattern) for pattern in DEFAULT_PATTERNS):
+            if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
                 matching_files.append(os.path.join(root, filename))
     if not matching_files:
         sys.exit(f"{MSG_NO_MATCHING_FILES} '{directory}'")
-    return matching_files
+    return sorted(matching_files)
 
 
 def prompt_user_delete(files: list) -> list:
@@ -80,7 +113,8 @@ def main() -> None:
     if is_root_directory(args.directory):
         sys.exit(MSG_DANGEROUS_DIRECTORY)
 
-    files = find_files(args.directory)
+    patterns = select_patterns(args)
+    files = find_files(args.directory, patterns)
     files_to_delete = prompt_user_delete(files)
     delete_files(files_to_delete)
 
