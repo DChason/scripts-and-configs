@@ -1,23 +1,49 @@
-scripts-and-configs
+<h2 align="center">
+    <img height="200" alt="scripts-and-configs" src="images/header-scripts-and-configs.png" />
+    <br>
+    scripts-and-configs: my digital junk drawer
+</h2>
 
-my digital junk drawer.
+---
 
-this repository is where i stash all my personal scripts, system tweaks, and app configs. these are items that "work for my specific use case" filled with hardcoded values, magic strings/numbers, and brittle execution. expect duct tape, not polish - caveat emptor.
+<div align="center">
 
-here there are no real install guides, no support, and no warranty. if you find something useful, awesome - take it and make it yours - but you're probably going to have to tweak a bit.
+[![Status: Here Be Dragons](https://img.shields.io/badge/status-here%20be%20dragons-orange?style=flat-square)](https://github.com/DChason/scripts-and-configs)
+[![Last Commit](https://img.shields.io/github/last-commit/DChason/scripts-and-configs.svg)](https://github.com/DChason/scripts-and-configs/commits/main)
+[![Issues](https://img.shields.io/github/issues/DChason/scripts-and-configs.svg)](https://github.com/DChason/scripts-and-configs/issues)
+[![GitHub stars](https://img.shields.io/github/stars/DChason/scripts-and-configs.svg)](https://github.com/DChason/scripts-and-configs/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Follow on LinkedIn](https://img.shields.io/badge/Follow%20me-LinkedIn-blue?logo=linkedin)](https://www.linkedin.com/in/damienchason/)
 
-what's inside
-scripts/
-quick-and-dirty scripts that are organized by language. expect random tinkerings, one-off fixes, and code that's more "get it done" than "do it right".
+</div>
 
-system/
-the catch-all for everything that can be related to the operating system and installed applications.
 
-os-specific
-linux and macos for settings, tweaks, and dotfiles unique to each operating system.
+**scripts-and-configs** is where I stash all my personal scripts, system tweaks, and app configs. These are items that "works on my machine" filled with hardcoded values, magic numbers, and brittle execution - duct tape without polish. There are no install guides, no support, and no warranty. If you find something useful, awesome - take it and make it yours - but you're probably going to have to tweak...a bit.
 
-configs
-application and tool configurations - sometimes split by os if setups diverge.
+Caveat Emptor.
 
-install
-application and tool installations.
+---
+
+## What's Inside
+
+```plaintext
+scripts/                  # Scripts organized by language. Expect random tinkerings, one-off fixes, and code that only I could love.
+  ├── bash               
+  ├── python             
+  ├── go                 
+  └── ...                 
+system/                   # The catch-all for everything that can be related to the operating system and installed applications.
+  ├── configs                   # Application and tool configurations - sometimes split by OS if the setups diverge.
+  │     └── phpstorm       
+  │         ├── linux    
+  │         └── macos    
+  ├── install                   # Setup/install scripts for apps and tools.
+  ├── linux                     # Settings, tweaks, and dotfiles for linux.
+  └── macos                     # Same as above but with a fruitier flavor.
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
