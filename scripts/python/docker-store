@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+
+import argparse
+import docker
+import sys
+
+DESCRIPTION = "Backup or restore a docker image."
+HELP_BACKUP = "Backup a docker image to a tar file."
+HELP_RESTORE = "Restore a docker image from a tar file."
+MSG_BACKUP_SUCCESS = "Image '{image_ref}' has been saved to {filename}"
+MSG_CHOICE = "Which Docker image do you want to backup? (Enter number, 'q' to quit): "
+MSG_FAILED_IMPORT = "Failed to import image: {e}"
+MSG_IMPORT_SUCCESS = "Image imported successfully from {tar_path}"
+MSG_INVALID_NUMBER ="Invalid selection: Please enter a valid number."
+MSG_INVALID_TAG = "Invalid selection: No tag for this image."
+MSG_NO_TAG = "No images with tags found."
+MSG_NOT_FOUND = "File not found: {tar_path}"
+MSG_QUIT = "No image selected. Exiting."
+
+client = docker.from_env()
+
+def parse_args() -> argparse.Namespace:
+    """Parse arguments from the command line."""
+    parser = argparse.ArgumentParser(
+        description=DESCRIPTION,
+        epilog=f"""
+            Examples:
+                docker-store
+                  Get an enumerated list of available images to backup to a tar file.
+                  
+                docker-store -b ubuntu
+                  Backup the ubuntu image to a tar file.
+
+                docker-store -r ubuntu.tar
+                  Restore the ubuntu image from a tar file.
+            """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    pattern_mode = parser.add_mutually_exclusive_group()
+    pattern_mode.add_argument("-b", "-backup", type=str, help=HELP_BACKUP)
+    pattern_mode.add_argument("-r", "-restore", type=str, help=HELP_RESTORE)
+    return parser.parse_args()
+
+
+def parse_image_tag(tag_str: str) -> tuple[str, str]:
+    """Extract the image name and tag from a Docker tag string."""
+    name = tag_str.split(":")[0].split("/")[-1]
+    tag = tag_str.split(":")[1] if ":" in tag_str else "latest"
+    return name, tag
+
+
+def list_image() -> None:
+    """List all available Docker image tags for backup."""
+    images = client.api.images()
+    tag_choices = []
+    for image in images:
+        repo_tags = image.get("RepoTags", [])
+        for tag_str in repo_tags:
+            name, tag = parse_image_tag(tag_str)
+            display = f"{name}:{tag}"
+            tag_choices.append((tag_str, name, tag, display))
+    if not tag_choices:
+        print(MSG_NO_TAG)
+        sys.exit(1)
+    for index, (_, _, _, display) in enumerate(tag_choices, 1):
+        print(f"{index}: {display}")
+    choice = input(MSG_CHOICE)
+    if not choice or choice.lower() == "q":
+        print(MSG_QUIT)
+        sys.exit(1)
+    try:
+        selected_index = int(choice) - 1
+        selected_ref, name, tag, _ = tag_choices[selected_index]
+        display_name = f"{name}_{tag}"
+        get_image(selected_ref, display_name)
+    except (ValueError, IndexError):
+        print(MSG_INVALID_NUMBER)
+        sys.exit(1)
+
+
+def get_image(image_ref: str, display_name: str) -> None:
+    """Create a tar file backup from a Docker image."""
+    docker_image = client.api.get_image(image_ref)
+    filename = f"{display_name}.tar"
+    with open(filename, "wb") as file:
+        for chunk in docker_image:
+            file.write(chunk)
+    print(MSG_BACKUP_SUCCESS.format(image_ref=image_ref, filename=filename))
+
+
+def import_image(tar_path: str) -> None:
+    """Restore a tar file backup to a Docker image."""
+    try:
+        with open(tar_path, "rb") as tar_file:
+            client.api.import_image(src=tar_file)
+        print(MSG_IMPORT_SUCCESS.format(tar_path=tar_path))
+    except FileNotFoundError:
+        print(MSG_NOT_FOUND.format(tar_path=tar_path))
+        sys.exit(1)
+    except Exception as e:
+        print(MSG_FAILED_IMPORT.format(e=e))
+        sys.exit(1)
+
+
+def main() -> None:
+    """Main entry point for the docker-store CLI."""
+    args = parse_args()
+
+    if args.b:
+        tag_str = args.b
+        name, tag = parse_image_tag(tag_str)
+        display_name = f"{name}_{tag}"
+        get_image(args.b, display_name)
+    elif args.r:
+        import_image(args.r)
+    else:
+        list_image()
+
+
+
+if __name__ == "__main__":
+    main()
