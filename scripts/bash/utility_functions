@@ -1,0 +1,81 @@
+#!/bin/bash
+# this file defines common functions for reuse across multiple scripts; reducing the need for redundant definitions.
+
+
+# export common colors:
+color_exports() {
+  export GREEN="\033[38;5;84m"
+  export CYAN="\033[38;5;87m"
+  export COMMENT="\033[38;5;103m"
+  export PURPLE="\033[38;5;141m"
+  export RED="\033[38;5;203m"
+  export MAGENTA="\033[38;5;212m"
+  export ORANGE="\033[38;5;215m"
+  export YELLOW="\033[38;5;228m"
+  export RESET="\033[0m"
+  export BOLD="\033[1m"
+  export ITALIC="\033[3m"
+  export UNDERLINE="\033[4m"
+  export BLINK="\033[5m"
+  export REVERSE="\033[7m"
+  export HIDDEN="\033[8m"
+  export STRIKE="\033[9m"
+}
+
+
+# export directories, images, etc.:
+function architecture_exports() {
+
+  # export common directory variables:
+  export PROJECTS="$HOME/Github"
+
+  # export common file locations and names:
+  export DB_SCRIPT_LOCATION="foo"
+  export DB_CONTAINER_NAME="bar"
+
+  # export architecture specific variables:
+  if [[ "$(arch)" == "arm64" ]]; then
+    export MYSQL_IMAGE="foo"
+  elif [[ "$(arch)" == "i386" ]]; then
+    export MYSQL_IMAGE="bar"
+  fi
+}
+
+# check if rosetta is installed on arm64 machines and if not, install it
+function install_rosetta() {
+  if [[ "$(printenv ARCH)" == "arm64" ]]; then
+    if [[ -e /usr/libexec/rosetta ]];
+      then
+        echo "${YELLOW}Rosetta ${MAGENTA}is already installed${RESET}"
+      else
+        echo "${YELLOW}Rosetta ${MAGENTA}is not installed. Installing...${RESET}"
+        /usr/sbin/softwareupdate --install-rosetta
+    fi
+  fi
+}
+
+# wait for the database container to be ready - exit totally if not:
+wait_for_database() {
+  local container_name="$DB_CONTAINER_NAME"
+  local max_attempts=90
+  local attempt=1
+  echo -e "\n${CYAN}waiting for database to be ready in container $container_name...${RESET}"
+  until docker exec "$container_name" mysqladmin ping -h"127.0.0.1" --silent; do
+    if [ $attempt -ge $max_attempts ]; then
+      echo -e "\n${RED}database did not become ready in time. investigate for issues.${RESET}\n"
+      exit 1
+    fi
+    attempt=$((attempt+1))
+    sleep 2
+  done
+  echo -e "${GREEN}database is ready.${RESET}\n"
+}
+
+# items in main should only be items that are used in _every_ script and situation:
+function main() {
+  color_exports
+  architecture_exports
+}
+
+
+main

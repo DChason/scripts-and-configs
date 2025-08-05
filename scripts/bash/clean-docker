@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# source script files
+source "$HOME/.scripts/utility_functions"
+
+function clean_docker() {
+  echo -e "\n${MAGENTA}running ${YELLOW}docker builder prune${MAGENTA}:${RESET}"
+  yes | docker builder prune
+  wait
+
+  echo -e "\n${MAGENTA}running ${YELLOW}docker volume prune${MAGENTA}:${RESET}"
+  yes | docker volume prune
+  wait
+
+  echo -e "\n${MAGENTA}running ${YELLOW}docker network prune${MAGENTA}:${RESET}"
+  yes | docker network prune
+  wait
+
+  echo -e "\n${MAGENTA}docker ${YELLOW}cleaned${MAGENTA}.${RESET}\n"
+}
+
+clean_docker
