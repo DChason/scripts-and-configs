@@ -55,7 +55,7 @@ function install_rosetta() {
 }
 
 # wait for the database container to be ready - exit totally if not:
-wait_for_database() {
+function wait_for_database() {
   local container_name="$DB_CONTAINER_NAME"
   local max_attempts=90
   local attempt=1
